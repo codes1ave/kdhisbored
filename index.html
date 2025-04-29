@@ -22,6 +22,7 @@
       margin: 0 auto;
       border: 2px solid #333;
       touch-action: none;
+      
 
       background-image: url("오로라.jpeg");
   background-repeat: no-repeat;
@@ -73,12 +74,12 @@
 
 <!-- 게임 오버 오버레이 -->
 <div id="gameOverScreen">
-  <div>게임 오버!</div>
+  <div style="color: red;"><strong>GAME OVER</strong></div>
   <button id="restartBtn">다시 시작</button>
 </div>
 
 <!-- 게임 멈춤 버튼 -->
-<button id="pauseBtn">게임 멈춤</button>
+<button id="pauseBtn" style="background-color: crimson;">게임 멈춤</button>
 
 <script>
   const canvas = document.getElementById("gameCanvas");
@@ -223,7 +224,7 @@
 
   function drawScore() {
     ctx.font = "16px Arial";
-    ctx.fillStyle = "#333";
+    ctx.fillStyle = "#00ff00";
     ctx.fillText(`스테이지: ${stage}`, 8, 20);
   }
 
@@ -343,7 +344,7 @@
         const remainingDays = Math.ceil(timeDifference / (1000 * 3600 * 24));
 
         if (remainingDays <= 0) {
-          resultDiv.textContent = '전역일입니다!';
+          resultDiv.textContent = '전역일';
         } else {
           resultDiv.textContent = `D-${remainingDays}`;
         }
