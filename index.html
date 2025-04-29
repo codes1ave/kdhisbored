@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>자바스크립트로 재능(?)낭비</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      background: #eee;
+      overflow: hidden;
+      position: relative;
+
+      background-image: url("서울은오.jpg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+    }
+    canvas {
+      background: #eee;
+      display: block;
+      margin: 0 auto;
+      border: 2px solid #333;
+      touch-action: none;
+
+      background-image: url("오로라.jpeg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+    }
+    #gameOverScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-size: 24px;
+      z-index: 10;
+      display: none;
+    }
+    #restartBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 20px;
+      background: #00aaff;
+      border: none;
+      border-radius: 10px;
+      color: white;
+    }
+    #pauseBtn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #ff9900;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="480" height="320"></canvas>
+
+<!-- 게임 오버 오버레이 -->
+<div id="gameOverScreen">
+  <div>게임 오버!</div>
+  <button id="restartBtn">다시 시작</button>
+</div>
+
+<!-- 게임 멈춤 버튼 -->
+<button id="pauseBtn">게임 멈춤</button>
+
+<script>
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+  const gameOverScreen = document.getElementById("gameOverScreen");
+  const restartBtn = document.getElementById("restartBtn");
+  const pauseBtn = document.getElementById("pauseBtn");
+
+  let ballRadius = 10;
+  let x = canvas.width / 2;
+  let y = canvas.height - 30;
+  let dx = 2;
+  let dy = -2;
+
+  const paddleHeight = 10;
+  let paddleWidth = 75;
+  let paddleX = (canvas.width - paddleWidth) / 2;
+
+  let rightPressed = false;
+  let leftPressed = false;
+
+  let brickRowCount = 3;
+  const brickColumnCount = 5;
+  const brickWidth = 75;
+  const brickHeight = 20;
+  const brickPadding = 10;
+  const brickOffsetTop = 30;
+  const brickOffsetLeft = 30;
+  let bricks = [];
+
+  let score = 0;
+  let stage = 1;
+  let gameOver = false;
+  let gamePaused = false;
+
+  function createBricks() {
+    bricks = [];
+    for (let c = 0; c < brickColumnCount; c++) {
+      bricks[c] = [];
+      for (let r = 0; r < brickRowCount; r++) {
+        bricks[c][r] = { x: 0, y: 0, status: 1 };
+      }
+    }
+  }
+
+  createBricks();
+
+  document.addEventListener("keydown", keyDownHandler, false);
+  document.addEventListener("keyup", keyUpHandler, false);
+  canvas.addEventListener("touchmove", touchMoveHandler, { passive: false });
+  restartBtn.addEventListener("click", restartGame);
+  pauseBtn.addEventListener("click", togglePause);
+
+  function keyDownHandler(e) {
+    if (e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
+    else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
+  }
+
+  function keyUpHandler(e) {
+    if (e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
+    else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
+  }
+
+  function touchMoveHandler(e) {
+    e.preventDefault();
+    const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+    paddleX = touchX - paddleWidth / 2;
+    if (paddleX < 0) paddleX = 0;
+    if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
+  }
+
+  function collisionDetection() {
+    for (let c = 0; c < brickColumnCount; c++) {
+      for (let r = 0; r < brickRowCount; r++) {
+        let b = bricks[c][r];
+        if (b.status === 1) {
+          if (
+            x > b.x && x < b.x + brickWidth &&
+            y > b.y && y < b.y + brickHeight
+          ) {
+            dy = -dy;
+            b.status = 0;
+            score++;
+            dx *= 1.02;
+            dy *= 1.02;
+
+            if (score === brickRowCount * brickColumnCount) {
+              nextStage();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function nextStage() {
+    stage++;
+    score = 0;
+    brickRowCount++;
+    paddleWidth *= 0.9;
+    if (paddleWidth < 40) paddleWidth = 40;
+    x = canvas.width / 2;
+    y = canvas.height - 30;
+    dx = 2 * (Math.random() > 0.5 ? 1 : -1);
+    dy = -2;
+    createBricks();
+  }
+
+  function drawBall() {
+    ctx.beginPath();
+    ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+  }
+
+  function drawPaddle() {
+    ctx.beginPath();
+    ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+  }
+
+  function drawBricks() {
+    for (let c = 0; c < brickColumnCount; c++) {
+      for (let r = 0; r < brickRowCount; r++) {
+        if (bricks[c][r].status === 1) {
+          let brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+          let brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+          bricks[c][r].x = brickX;
+          bricks[c][r].y = brickY;
+          ctx.beginPath();
+          ctx.rect(brickX, brickY, brickWidth, brickHeight);
+          ctx.fillStyle = "#0095DD";
+          ctx.fill();
+          ctx.closePath();
+        }
+      }
+    }
+  }
+
+  function drawScore() {
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#333";
+    ctx.fillText(`스테이지: ${stage}`, 8, 20);
+  }
+
+  function draw() {
+    if (gameOver) return;
+    if (gamePaused) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBricks();
+    drawBall();
+    drawPaddle();
+    drawScore();
+    collisionDetection();
+
+    if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+    if (y + dy < ballRadius) dy = -dy;
+    else if (y + dy > canvas.height - ballRadius) {
+      if (x > paddleX && x < paddleX + paddleWidth) {
+        dy = -dy;
+      } else {
+        endGame();
+      }
+    }
+
+    if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 5;
+    else if (leftPressed && paddleX > 0) paddleX -= 5;
+
+    x += dx;
+    y += dy;
+    requestAnimationFrame(draw);
+  }
+
+  function endGame() {
+    gameOver = true;
+    gameOverScreen.style.display = "flex";
+  }
+
+  function restartGame() {
+    gameOver = false;
+    stage = 1;
+    score = 0;
+    brickRowCount = 3;
+    paddleWidth = 75;
+    x = canvas.width / 2;
+    y = canvas.height - 30;
+    dx = 2;
+    dy = -2;
+    paddleX = (canvas.width - paddleWidth) / 2;
+    createBricks();
+    gameOverScreen.style.display = "none";
+    draw();
+  }
+
+  function togglePause() {
+    gamePaused = !gamePaused;
+    if (gamePaused) {
+      pauseBtn.textContent = "게임 재개";
+    } else {
+      pauseBtn.textContent = "게임 멈춤";
+      draw();  // 재개되면 다시 게임 시작
+    }
+  }
+
+  draw();
+</script>
+<br><br><br>
+<div style="text-align: center; color: #eee;">
+  <link rel="stylesheet" href="style.css">
+  <h1 style="color: yellow; font-family:'Times New Roman', Times, serif;">전역일 계산기</h1>
+
+  <label for="startDate">입대일 선택:</label>
+  <input type="date" id="startDate">
+
+  <label for="branch">군 종류 선택:</label>
+  <select id="branch">
+    <option value="army">육군</option>
+    <option value="navy">해군</option>
+    <option value="airForce">공군</option>
+  </select>
+
+  <label for="serviceDays">복무 기간 (일):</label>
+  <input type="number" id="serviceDays" value="545" readonly>
+
+  <button onclick="calculateDischargeDate()">전역일 계산</button>
+
+  <div id="result"></div>
+
+  <script>
+    const servicePeriods = {
+      army: 545,
+      navy: 579,
+      airForce: 639
+    };
+
+    document.getElementById('branch').addEventListener('change', function () {
+      const selectedBranch = this.value;
+      document.getElementById('serviceDays').value = servicePeriods[selectedBranch];
+    });
+
+    function calculateDischargeDate() {
+      const startDateInput = document.getElementById('startDate').value;
+      const serviceDays = parseInt(document.getElementById('serviceDays').value, 10);
+      const resultDiv = document.getElementById('result');
+
+      if (!startDateInput || isNaN(serviceDays)) {
+        resultDiv.textContent = '입대일과 군 종류를 올바르게 입력하세요.';
+        return;
+      }
+
+      const startDate = new Date(startDateInput);
+      const dischargeDate = new Date(startDate);
+      dischargeDate.setDate(dischargeDate.getDate() + serviceDays);
+
+      const updateRemainingDays = () => {
+        const today = new Date();
+        const timeDifference = dischargeDate - today;
+        const remainingDays = Math.ceil(timeDifference / (1000 * 3600 * 24));
+
+        if (remainingDays <= 0) {
+          resultDiv.textContent = '전역일입니다!';
+        } else {
+          resultDiv.textContent = `D-${remainingDays}`;
+        }
+      };
+
+      updateRemainingDays();
+      setInterval(updateRemainingDays, 1000);
+    }
+  </script>
+</div>
+</body>
+</html>
